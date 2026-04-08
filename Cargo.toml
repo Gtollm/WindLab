@@ -1,6 +1,27 @@
 [package]
-name = "WindLab"
+name = "windlab"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85"
+description = "3D lattice Boltzmann CFD solver (D3Q19) with STL geometry import and VTK export"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/gtollm/windlab"
+keywords = ["cfd", "lbm", "simulation", "vtk", "fluid-dynamics"]
+categories = ["science", "simulation"]
+
+[lib]
+name = "wind_lab"
 
 [dependencies]
+rayon = "1.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "sync"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+nalgebra = "0.33"
+stl_io = "0.8"
+clap = { version = "4", features = ["derive"] }
+indicatif = "0.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+vtkio = "0.6"

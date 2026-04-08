@@ -1,0 +1,22 @@
+[grid]
+nx = 48
+ny = 48
+nz = 48
+dx = 1.0e-3
+dt = 1.0e-3
+
+[physics]
+tau = 0.85
+body_force = [0.0, 0.0, 0.0]
+
+[run]
+steps = 500
+vtk_every = 50
+
+[io]
+output_dir = "output"
+vtk_basename = "case"
+
+[geometry]
+stl_path = "models/something.stl"
+padding = 0.25
