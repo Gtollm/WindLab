@@ -2,10 +2,10 @@
 
 use rayon::prelude::*;
 
-use crate::grid::cell::NodeType;
 use crate::grid::SoaDomain;
-use crate::lattice::equilibrium::feq_populations;
+use crate::grid::cell::NodeType;
 use crate::lattice::Q;
+use crate::lattice::equilibrium::feq_populations;
 
 #[inline]
 pub fn omega_from_tau(tau: f64) -> f64 {
