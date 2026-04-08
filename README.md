@@ -1,4 +1,4 @@
-e WindLab
+WindLab
 
 3D lattice Boltzmann CFD (**D3Q19**, BGK) in Rust: **Rayon**-parallel collide/stream/macro steps, **Tokio** for async
 VTK export, optional **STL** voxelization, optional **Bevy** preview (`--features visualize`).
