@@ -7,7 +7,7 @@ dt = 1.0e-3
 
 [physics]
 tau = 0.85
-body_force = [0.0, 0.0, 0.0]
+body_force = [0.0, 0.017, 0]
 
 [run]
 steps = 500
@@ -18,5 +18,5 @@ output_dir = "output"
 vtk_basename = "case"
 
 [geometry]
-stl_path = "models/something.stl"
+stl_path = "models/test.stl"
 padding = 0.25

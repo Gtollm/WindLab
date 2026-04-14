@@ -14,6 +14,7 @@ use wind_lab::geometry::{load_stl_triangles, voxelize_triangles};
 use wind_lab::grid::cell::NodeType;
 use wind_lab::grid::SoaDomain;
 use wind_lab::io::{write_vti_velocity, write_vtp_stl_surface};
+use wind_lab::visualization::rerun_viz::{self, RecordingStream};
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging();
@@ -44,6 +45,9 @@ enum Commands {
         async_io: bool,
         #[arg(long)]
         no_progress: bool,
+        /// Stream live visualization to Rerun viewer (requires `rerun` CLI in PATH)
+        #[arg(long)]
+        rerun: bool,
     },
     DemoChannel {
         #[arg(long, default_value_t = 32)]
@@ -52,6 +56,12 @@ enum Commands {
         steps: usize,
         #[arg(long)]
         no_progress: bool,
+        /// Stream live visualization to Rerun viewer (requires `rerun` CLI in PATH)
+        #[arg(long)]
+        rerun: bool,
+        /// Log a Rerun frame every N steps (default: steps/20)
+        #[arg(long)]
+        viz_every: Option<usize>,
     },
 }
 
@@ -62,12 +72,15 @@ impl Commands {
                 config,
                 async_io,
                 no_progress,
-            } => run_simulation(&config, async_io, no_progress),
+                rerun,
+            } => run_simulation(&config, async_io, no_progress, rerun),
             Commands::DemoChannel {
                 n,
                 steps,
                 no_progress,
-            } => run_demo(n, steps, no_progress),
+                rerun,
+                viz_every,
+            } => run_demo(n, steps, no_progress, rerun, viz_every),
         }
     }
 }
@@ -76,6 +89,7 @@ fn run_simulation(
     config_path: &PathBuf,
     async_io: bool,
     no_progress: bool,
+    use_rerun: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg = SimConfig::load(config_path)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
@@ -86,17 +100,31 @@ fn run_simulation(
     let mut types = domain.node_type.clone();
     cfg.apply_channel_walls_z(&mut types);
 
-    let stl_world = load_and_voxelize(&cfg, &mut types)?;
+    let (world_frame, stl_tris) = load_and_voxelize(&cfg, &mut types)?;
 
     domain.copy_node_types_from(&types);
     domain.init_uniform(1.0, 0.0, 0.0, 0.0);
 
     std::fs::create_dir_all(&cfg.io.output_dir)?;
 
-    if async_io {
-        run_async(&cfg, &params, &domain, stl_world, no_progress)?;
+    let rec = if use_rerun {
+        let r = rerun_viz::spawn_viewer("windlab")?;
+        if !stl_tris.is_empty() {
+            if let Some(bounds) = &world_frame {
+                rerun_viz::log_stl_mesh(&r, &stl_tris, bounds, cfg.grid.nx, cfg.grid.ny, cfg.grid.nz)?;
+            }
+        } else {
+            rerun_viz::log_geometry(&r, &domain)?;
+        }
+        Some(r)
     } else {
-        run_sync(&cfg, &params, &domain, stl_world, no_progress)?;
+        None
+    };
+
+    if async_io {
+        run_async(&cfg, &params, &domain, world_frame, no_progress, rec)?;
+    } else {
+        run_sync(&cfg, &params, &domain, world_frame, no_progress, rec)?;
     }
 
     info!("Run finished.");
@@ -106,9 +134,9 @@ fn run_simulation(
 fn load_and_voxelize(
     cfg: &SimConfig,
     types: &mut [NodeType],
-) -> Result<Option<Bounds>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(Option<Bounds>, Vec<wind_lab::geometry::stl::Tri>), Box<dyn std::error::Error + Send + Sync>> {
     let Some(geo) = &cfg.geometry else {
-        return Ok(None);
+        return Ok((None, vec![]));
     };
 
     let (tris, mut bounds) = load_stl_triangles(&geo.stl_path).map_err(std::io::Error::other)?;
@@ -128,7 +156,7 @@ fn load_and_voxelize(
         }
     }
 
-    Ok(Some(bounds))
+    Ok((Some(bounds), tris))
 }
 fn run_sync(
     cfg: &SimConfig,
@@ -136,6 +164,7 @@ fn run_sync(
     domain: &SoaDomain,
     world_frame: Option<Bounds>,
     no_progress: bool,
+    rec: Option<RecordingStream>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut domain = domain.clone();
     let pb = progress_bar(cfg.run.steps, no_progress);
@@ -148,6 +177,10 @@ fn run_sync(
         if cfg.run.vtk_every > 0 && (step + 1) % cfg.run.vtk_every == 0 {
             let path = vtk_path(&cfg.io.output_dir, &cfg.io.vtk_basename, step + 1);
             write_vti_velocity(&path, &domain, world_frame.as_ref())?;
+            if let Some(r) = &rec {
+                rerun_viz::log_velocity_points(r, &domain, step + 1)?;
+                rerun_viz::log_velocity_slice(r, &domain, step + 1)?;
+            }
         }
     }
 
@@ -163,6 +196,7 @@ fn run_async(
     domain: &SoaDomain,
     world_frame: Option<Bounds>,
     no_progress: bool,
+    rec: Option<RecordingStream>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -193,8 +227,13 @@ fn run_async(
                     d.clone()
                 };
                 let frame = world_frame;
+                let rec_snap = rec.clone();
                 tokio::task::spawn_blocking(move || {
                     let _ = write_vti_velocity(&path, &snap, frame.as_ref());
+                    if let Some(r) = rec_snap {
+                        let _ = rerun_viz::log_velocity_points(&r, &snap, step + 1);
+                        let _ = rerun_viz::log_velocity_slice(&r, &snap, step + 1);
+                    }
                 })
                 .await
                 .ok();
@@ -213,6 +252,8 @@ fn run_demo(
     n: usize,
     steps: usize,
     no_progress: bool,
+    use_rerun: bool,
+    viz_every: Option<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use wind_lab::lattice::index;
 
@@ -236,11 +277,26 @@ fn run_demo(
         body_force: [1e-5, 0.0, 0.0],
     };
 
+    let rec = if use_rerun {
+        let r = rerun_viz::spawn_viewer("windlab-demo")?;
+        rerun_viz::log_geometry(&r, &domain)?;
+        Some(r)
+    } else {
+        None
+    };
+
+    let every = viz_every.unwrap_or((steps / 20).max(1));
     let pb = progress_bar(steps, no_progress);
-    for _ in 0..steps {
+    for step in 0..steps {
         step_soa(&mut domain, &params);
         if let Some(p) = &pb {
             p.inc(1);
+        }
+        if let Some(r) = &rec {
+            if (step + 1) % every == 0 {
+                rerun_viz::log_velocity_points(r, &domain, step + 1)?;
+                rerun_viz::log_velocity_slice(r, &domain, step + 1)?;
+            }
         }
     }
     if let Some(p) = &pb {

@@ -9,3 +9,4 @@ pub mod io;
 pub mod lattice;
 pub mod physics;
 pub mod streaming;
+pub mod visualization;
