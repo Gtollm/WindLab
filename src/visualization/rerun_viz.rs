@@ -221,15 +221,17 @@ pub fn log_velocity_points(
     Ok(())
 }
 
-/// Log velocity arrows on the mid-Z slice (2-D cross section, scaled for readability).
+/// Log velocity arrows on one or more Z-slices (2-D cross sections, scaled for readability).
+/// Log velocity arrows for the given Z-index planes.
+/// `z_indices`: slice of z-coordinates to render (already clamped/resolved by caller).
 pub fn log_velocity_slice(
     rec: &RecordingStream,
     domain: &SoaDomain,
     step: usize,
+    z_indices: &[usize],
 ) -> Result<(), rerun::RecordingStreamError> {
     rec.set_time_sequence("step", step as i64);
 
-    let mid_z = domain.nz / 2;
     let v_max = max_speed(domain).max(1e-12);
     let arrow_scale = 0.4_f32 * (domain.nx.min(domain.ny) as f32) / v_max as f32;
 
@@ -237,20 +239,22 @@ pub fn log_velocity_slice(
     let mut vectors: Vec<[f32; 3]> = Vec::new();
     let mut colors: Vec<rerun::Color> = Vec::new();
 
-    for y in 0..domain.ny {
-        for x in 0..domain.nx {
-            let i = domain.idx(x, y, mid_z);
-            if is_fluid(&domain.node_type[i]) {
-                let ux = domain.ux[i] as f32;
-                let uy = domain.uy[i] as f32;
-                let uz = domain.uz[i] as f32;
-                let speed = (domain.ux[i] * domain.ux[i]
-                    + domain.uy[i] * domain.uy[i]
-                    + domain.uz[i] * domain.uz[i])
-                    .sqrt();
-                origins.push([x as f32, y as f32, mid_z as f32]);
-                vectors.push([ux * arrow_scale, uy * arrow_scale, uz * arrow_scale]);
-                colors.push(turbo((speed / v_max).clamp(0.0, 1.0) as f32));
+    for &z in z_indices {
+        for y in 0..domain.ny {
+            for x in 0..domain.nx {
+                let i = domain.idx(x, y, z);
+                if is_fluid(&domain.node_type[i]) {
+                    let ux = domain.ux[i] as f32;
+                    let uy = domain.uy[i] as f32;
+                    let uz = domain.uz[i] as f32;
+                    let speed = (domain.ux[i] * domain.ux[i]
+                        + domain.uy[i] * domain.uy[i]
+                        + domain.uz[i] * domain.uz[i])
+                        .sqrt();
+                    origins.push([x as f32, y as f32, z as f32]);
+                    vectors.push([ux * arrow_scale, uy * arrow_scale, uz * arrow_scale]);
+                    colors.push(turbo((speed / v_max).clamp(0.0, 1.0) as f32));
+                }
             }
         }
     }

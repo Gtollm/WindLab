@@ -48,6 +48,10 @@ enum Commands {
         /// Stream live visualization to Rerun viewer (requires `rerun` CLI in PATH)
         #[arg(long)]
         rerun: bool,
+        /// Z-planes to visualize: comma-separated indices and/or ranges (e.g. "1,2,3-8,10").
+        /// Defaults to nz/2 when --rerun is set.
+        #[arg(long)]
+        slice_z: Option<String>,
     },
     DemoChannel {
         #[arg(long, default_value_t = 32)]
@@ -62,6 +66,10 @@ enum Commands {
         /// Log a Rerun frame every N steps (default: steps/20)
         #[arg(long)]
         viz_every: Option<usize>,
+        /// Z-planes to visualize: comma-separated indices and/or ranges (e.g. "1,2,3-8,10").
+        /// Defaults to nz/2 when --rerun is set.
+        #[arg(long)]
+        slice_z: Option<String>,
     },
 }
 
@@ -73,14 +81,16 @@ impl Commands {
                 async_io,
                 no_progress,
                 rerun,
-            } => run_simulation(&config, async_io, no_progress, rerun),
+                slice_z,
+            } => run_simulation(&config, async_io, no_progress, rerun, slice_z),
             Commands::DemoChannel {
                 n,
                 steps,
                 no_progress,
                 rerun,
                 viz_every,
-            } => run_demo(n, steps, no_progress, rerun, viz_every),
+                slice_z,
+            } => run_demo(n, steps, no_progress, rerun, viz_every, slice_z),
         }
     }
 }
@@ -90,6 +100,7 @@ fn run_simulation(
     async_io: bool,
     no_progress: bool,
     use_rerun: bool,
+    slice_z_spec: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg = SimConfig::load(config_path)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
@@ -121,10 +132,11 @@ fn run_simulation(
         None
     };
 
+    let z_indices = parse_z_indices(slice_z_spec.as_deref(), cfg.grid.nz)?;
     if async_io {
-        run_async(&cfg, &params, &domain, world_frame, no_progress, rec)?;
+        run_async(&cfg, &params, &domain, world_frame, no_progress, rec, z_indices)?;
     } else {
-        run_sync(&cfg, &params, &domain, world_frame, no_progress, rec)?;
+        run_sync(&cfg, &params, &domain, world_frame, no_progress, rec, z_indices)?;
     }
 
     info!("Run finished.");
@@ -165,6 +177,7 @@ fn run_sync(
     world_frame: Option<Bounds>,
     no_progress: bool,
     rec: Option<RecordingStream>,
+    z_indices: Vec<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut domain = domain.clone();
     let pb = progress_bar(cfg.run.steps, no_progress);
@@ -179,7 +192,7 @@ fn run_sync(
             write_vti_velocity(&path, &domain, world_frame.as_ref())?;
             if let Some(r) = &rec {
                 rerun_viz::log_velocity_points(r, &domain, step + 1)?;
-                rerun_viz::log_velocity_slice(r, &domain, step + 1)?;
+                rerun_viz::log_velocity_slice(r, &domain, step + 1, &z_indices)?;
             }
         }
     }
@@ -197,6 +210,7 @@ fn run_async(
     world_frame: Option<Bounds>,
     no_progress: bool,
     rec: Option<RecordingStream>,
+    z_indices: Vec<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -228,11 +242,12 @@ fn run_async(
                 };
                 let frame = world_frame;
                 let rec_snap = rec.clone();
+                let z_snap = z_indices.clone();
                 tokio::task::spawn_blocking(move || {
                     let _ = write_vti_velocity(&path, &snap, frame.as_ref());
                     if let Some(r) = rec_snap {
                         let _ = rerun_viz::log_velocity_points(&r, &snap, step + 1);
-                        let _ = rerun_viz::log_velocity_slice(&r, &snap, step + 1);
+                        let _ = rerun_viz::log_velocity_slice(&r, &snap, step + 1, &z_snap);
                     }
                 })
                 .await
@@ -254,6 +269,7 @@ fn run_demo(
     no_progress: bool,
     use_rerun: bool,
     viz_every: Option<usize>,
+    slice_z_spec: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use wind_lab::lattice::index;
 
@@ -285,6 +301,7 @@ fn run_demo(
         None
     };
 
+    let z_indices = parse_z_indices(slice_z_spec.as_deref(), nz)?;
     let every = viz_every.unwrap_or((steps / 20).max(1));
     let pb = progress_bar(steps, no_progress);
     for step in 0..steps {
@@ -295,7 +312,7 @@ fn run_demo(
         if let Some(r) = &rec {
             if (step + 1) % every == 0 {
                 rerun_viz::log_velocity_points(r, &domain, step + 1)?;
-                rerun_viz::log_velocity_slice(r, &domain, step + 1)?;
+                rerun_viz::log_velocity_slice(r, &domain, step + 1, &z_indices)?;
             }
         }
     }
@@ -307,6 +324,44 @@ fn run_demo(
     write_vti_velocity("output/demo_channel.vti", &domain, None)?;
     info!("Wrote output/demo_channel.vti ({steps} steps).");
     Ok(())
+}
+
+/// Parse a z-index spec like `"1,2,3-8,10"` into a sorted, deduplicated Vec<usize>.
+/// Each token is either a single index or an inclusive range `start-end`.
+/// All values are clamped to `[0, nz-1]`. `None` → `[nz/2]`.
+fn parse_z_indices(
+    spec: Option<&str>,
+    nz: usize,
+) -> Result<Vec<usize>, Box<dyn std::error::Error + Send + Sync>> {
+    let Some(s) = spec else {
+        return Ok(vec![nz / 2]);
+    };
+
+    let mut set = std::collections::BTreeSet::new();
+    for token in s.split(',') {
+        let token = token.trim();
+        if token.is_empty() {
+            continue;
+        }
+        if let Some((a, b)) = token.split_once('-') {
+            let lo: usize = a.trim().parse().map_err(|_| format!("invalid index \"{a}\""))?;
+            let hi: usize = b.trim().parse().map_err(|_| format!("invalid index \"{b}\""))?;
+            if lo > hi {
+                return Err(format!("range \"{token}\": start > end").into());
+            }
+            for z in lo..=hi {
+                set.insert(z.min(nz - 1));
+            }
+        } else {
+            let z: usize = token.parse().map_err(|_| format!("invalid index \"{token}\""))?;
+            set.insert(z.min(nz - 1));
+        }
+    }
+
+    if set.is_empty() {
+        return Ok(vec![nz / 2]);
+    }
+    Ok(set.into_iter().collect())
 }
 
 fn progress_bar(total: usize, disabled: bool) -> Option<ProgressBar> {
