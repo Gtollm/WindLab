@@ -1,24 +1,12 @@
-//! Rerun visualization helpers for SoaDomain fields.
-//!
-//! Algorithms are untouched — this module only reads domain data and logs it.
-
 use crate::geometry::stl::Tri;
 use crate::grid::{cell::NodeType, SoaDomain};
 
 pub use rerun::RecordingStream;
 
-/// Spawn the Rerun viewer and return a recording stream.
-/// Requires `rerun` CLI in PATH — install with: `cargo install rerun-cli --locked`
 pub fn spawn_viewer(app_id: &str) -> Result<RecordingStream, rerun::RecordingStreamError> {
     rerun::RecordingStreamBuilder::new(app_id).spawn()
 }
 
-/// Log original STL triangles as a surface mesh — static, always visible.
-///
-/// Vertices are transformed from world space into grid index space using a
-/// **uniform** scale (smallest axis wins, preserves aspect ratio) then centered
-/// in the [0..nx-1] × [0..ny-1] × [0..nz-1] domain so they align with the
-/// velocity field logged by `log_velocity_points`.
 pub fn log_stl_mesh(
     rec: &RecordingStream,
     tris: &[Tri],
@@ -32,12 +20,11 @@ pub fn log_stl_mesh(
     }
 
     let extent = bounds.max - bounds.min;
-    // grid spans [0 .. n-1]; pick the tightest axis for uniform scale
     let scale = ((nx as f64 - 1.0) / extent.x.max(1e-30))
         .min((ny as f64 - 1.0) / extent.y.max(1e-30))
         .min((nz as f64 - 1.0) / extent.z.max(1e-30));
 
-    // center the scaled model in the domain
+
     let ox = ((nx as f64 - 1.0) - extent.x * scale) * 0.5;
     let oy = ((ny as f64 - 1.0) - extent.y * scale) * 0.5;
     let oz = ((nz as f64 - 1.0) - extent.z * scale) * 0.5;
@@ -71,7 +58,6 @@ pub fn log_stl_mesh(
     Ok(())
 }
 
-/// Log solid geometry as a surface mesh (only exposed faces) — static, always visible.
 pub fn log_geometry(rec: &RecordingStream, domain: &SoaDomain) -> Result<(), rerun::RecordingStreamError> {
     let (verts, tris) = build_solid_surface(domain);
     if tris.is_empty() {
@@ -90,7 +76,6 @@ pub fn log_geometry(rec: &RecordingStream, domain: &SoaDomain) -> Result<(), rer
     Ok(())
 }
 
-/// Extract only the faces of solid voxels that border a non-solid (or out-of-bounds) cell.
 fn build_solid_surface(domain: &SoaDomain) -> (Vec<[f32; 3]>, Vec<[u32; 3]>) {
     let mut verts: Vec<[f32; 3]> = Vec::new();
     let mut tris: Vec<[u32; 3]> = Vec::new();
@@ -186,7 +171,6 @@ fn add_quad(
     tris.push([base, base + 2, base + 3]);
 }
 
-/// Log fluid velocity as 3-D points colored by speed (turbo palette).
 pub fn log_velocity_points(
     rec: &RecordingStream,
     domain: &SoaDomain,
@@ -221,9 +205,6 @@ pub fn log_velocity_points(
     Ok(())
 }
 
-/// Log velocity arrows on one or more Z-slices (2-D cross sections, scaled for readability).
-/// Log velocity arrows for the given Z-index planes.
-/// `z_indices`: slice of z-coordinates to render (already clamped/resolved by caller).
 pub fn log_velocity_slice(
     rec: &RecordingStream,
     domain: &SoaDomain,
@@ -270,7 +251,6 @@ pub fn log_velocity_slice(
     Ok(())
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 #[inline]
 fn is_fluid(nt: &NodeType) -> bool {
@@ -295,7 +275,6 @@ fn max_speed(domain: &SoaDomain) -> f64 {
         .fold(0.0_f64, f64::max)
 }
 
-/// Turbo color map: blue (0) → cyan → green → yellow → red (1).
 fn turbo(t: f32) -> rerun::Color {
     let (r, g, b) = if t < 0.25 {
         let s = t * 4.0;

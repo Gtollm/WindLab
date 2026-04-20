@@ -1,5 +1,3 @@
-//! WindLab CLI - run LBM simulations from TOML config with optional VTK export
-
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
@@ -326,9 +324,6 @@ fn run_demo(
     Ok(())
 }
 
-/// Parse a z-index spec like `"1,2,3-8,10"` into a sorted, deduplicated Vec<usize>.
-/// Each token is either a single index or an inclusive range `start-end`.
-/// All values are clamped to `[0, nz-1]`. `None` → `[nz/2]`.
 fn parse_z_indices(
     spec: Option<&str>,
     nz: usize,
