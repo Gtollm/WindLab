@@ -1,4 +1,5 @@
 /target
-Сargo.lock
+Cargo.lock
+/models
 output
 /.*/
