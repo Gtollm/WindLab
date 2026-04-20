@@ -1,18 +1,14 @@
 ## Build
 
 ```bash
-# Default (VTK export only)
 cargo build --release
-
-# With live 3D visualization
-cargo build --release --features rerun
 ```
+
+Rerun visualization included by default — no extra feature flags needed.
 ## Live Visualization (Rerun)
 
-Requires `--features rerun` at build time.
-
 ```bash
-cargo run --release --features rerun -- demo-channel \
+cargo run --release -- demo-channel \
   --n 64 --steps 2000 --rerun --viz-every 10 --slice-z "16,24,28-31"
 ```
 
