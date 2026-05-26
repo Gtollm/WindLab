@@ -221,6 +221,9 @@ def run(
 
     stl_dir = tempfile.mkdtemp(prefix="windlab_opt_")
 
+    run_dir = Path(f"runs/{mode}_Re{re:.0f}_{time.strftime('%Y%m%d_%H%M%S')}")
+    run_dir.mkdir(parents=True, exist_ok=True)
+
     opts = cma.CMAOptions()
     opts["seed"]     = seed
     opts["maxiter"]  = max_iter
@@ -239,6 +242,7 @@ def run(
     print(f"  {'MINIMIZE' if mode == 'min' else 'MAXIMIZE'} Cd")
     print(f"  Re={re}  tau={tau:.3f}  V={V_target:.2e} m³  L={L:.3f} m")
     print(f"  params={len(x0)}  pop={pop_size}  cpd={cpd}  steps/eval={steps}")
+    print(f"  run dir → {run_dir}")
     print(f"{'─'*60}")
 
     while not es.stop():
@@ -262,6 +266,9 @@ def run(
 
         es.tell(solutions, fitnesses)
         tracker.record_iter(es.sigma)   # prints progress line
+
+        iter_stl = run_dir / f"iter_{tracker.iter:03d}_Cd{tracker.best_cd:.4f}.stl"
+        sg.save_stl(best_params, str(iter_stl), V_target=V_target, L=L)
 
     # newline after the last \r progress line
     print()
