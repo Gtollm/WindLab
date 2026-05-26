@@ -7,8 +7,8 @@ dt = 1.0e-3
 
 [physics]
 tau = 0.85
-body_force = [0.0, 0.017, 0]
-
+body_force = [0.0, 0.0, 0]
+inlet_u = [0.02, 0.0, 0]
 [run]
 steps = 500
 vtk_every = 50
@@ -18,5 +18,14 @@ output_dir = "output"
 vtk_basename = "case"
 
 [geometry]
-stl_path = "models/test.stl"
+stl_path = "models/something.stl"
 padding = 0.25
+rotation_deg = [90.0, 0.0, 90.0]
+
+[boundary]
+left   = "open"
+right  = "open"
+front  = "open"
+back   = "open"
+bottom = "open"
+top    = "open"

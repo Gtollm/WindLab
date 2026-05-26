@@ -167,7 +167,7 @@ mod tests {
             bottom: BoundaryKind::Solid,
             top: BoundaryKind::Solid,
         };
-        let (gx, _, _) = apply_periodic(-1, 4, 4, 4, 4, 4, 4, &b);
+        let (gx, _, _) = apply_periodic(-1, 4, 4, 4, 4, 4, &b);
         assert_eq!(gx, 3);
     }
 }

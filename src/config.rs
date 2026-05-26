@@ -7,6 +7,51 @@ use crate::core::solver::LbmParams;
 use crate::grid::cell::NodeType;
 use crate::grid::SoaDomain;
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub enum BoundaryKind {
+    #[serde(rename = "solid")]
+    Solid,
+    #[serde(rename = "open")]
+    Open,
+    #[serde(rename = "periodic")]
+    Periodic,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BoundaryConfig {
+    #[serde(default = "BoundaryKind::solid")]
+    pub left: BoundaryKind,
+    #[serde(default = "BoundaryKind::solid")]
+    pub right: BoundaryKind,
+    #[serde(default = "BoundaryKind::solid")]
+    pub front: BoundaryKind,
+    #[serde(default = "BoundaryKind::solid")]
+    pub back: BoundaryKind,
+    #[serde(default = "BoundaryKind::solid")]
+    pub bottom: BoundaryKind,
+    #[serde(default = "BoundaryKind::solid")]
+    pub top: BoundaryKind,
+}
+
+impl BoundaryKind {
+    fn solid() -> Self {
+        Self::Solid
+    }
+}
+
+impl Default for BoundaryConfig {
+    fn default() -> Self {
+        Self {
+            left: BoundaryKind::Solid,
+            right: BoundaryKind::Solid,
+            front: BoundaryKind::Solid,
+            back: BoundaryKind::Solid,
+            bottom: BoundaryKind::Solid,
+            top: BoundaryKind::Solid,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct SimConfig {
     pub grid: GridConfig,
@@ -16,6 +61,8 @@ pub struct SimConfig {
     pub io: IoConfig,
     #[serde(default)]
     pub geometry: Option<GeometryConfig>,
+    #[serde(default)]
+    pub boundary: BoundaryConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -32,6 +79,8 @@ pub struct PhysicsConfig {
     pub tau: f64,
     #[serde(default)]
     pub body_force: [f64; 3],
+    #[serde(default)]
+    pub inlet_u: [f64; 3],
 }
 
 impl PhysicsConfig {
@@ -69,10 +118,11 @@ fn default_vtk_basename() -> String {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct GeometryConfig {
-    /// Path to the STL mesh file.
     pub stl_path: String,
     #[serde(default = "default_padding")]
     pub padding: f64,
+    #[serde(default)]
+    pub rotation_deg: [f64; 3],
 }
 
 fn default_padding() -> f64 {
@@ -94,6 +144,7 @@ impl SimConfig {
         LbmParams {
             tau: self.physics.tau,
             body_force: self.physics.resolved_body_force(),
+            boundary: self.boundary.clone(),
         }
     }
 

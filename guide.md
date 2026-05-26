@@ -8,8 +8,7 @@ Rerun visualization included by default — no extra feature flags needed.
 ## Live Visualization (Rerun)
 
 ```bash
-cargo run --release -- demo-channel \
-  --n 64 --steps 2000 --rerun --viz-every 10 --slice-z "16,24,28-31"
+cargo run --release -- --config config.example.toml  --n 64 --steps 800 --rerun --viz-every 10 --slice-z "16,24,28-31"
 ```
 
 Opens the Rerun viewer automatically. Shows:
@@ -57,3 +56,17 @@ Log to Rerun every N steps. Default: `steps/20`.
 | `--rerun` | false | Enable live Rerun viewer |
 | `--viz-every <N>` | steps/20 | Rerun log interval |
 | `--slice-z <spec>` | nz/2 | Z-planes to visualize |
+
+
+
+временно тут напишу, потом покрасивше сделаем ридмишку и гайд.
+inlet_u нужна для случая когда у нас открытая
+
+
+В симуляторе:
+ν = (tau - 0.5) / 3 вязкость
+u_inlet = Re · ν / cpd
+
+https://mediatum.ub.tum.de/doc/1129700/1129700.pdf
+
+https://www.wias-berlin.de/people/caiazzo/PAPERS/MEA_analysis_reviewed_elsart.pdf

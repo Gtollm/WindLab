@@ -1,5 +1,6 @@
 use crate::geometry::stl::Tri;
 use crate::grid::{cell::NodeType, SoaDomain};
+use crate::physics::{drag_coefficient, drag_force, projected_area_yz, reference_velocity};
 
 pub use rerun::RecordingStream;
 
@@ -20,20 +21,16 @@ pub fn log_stl_mesh(
     }
 
     let extent = bounds.max - bounds.min;
-    let scale = ((nx as f64 - 1.0) / extent.x.max(1e-30))
-        .min((ny as f64 - 1.0) / extent.y.max(1e-30))
-        .min((nz as f64 - 1.0) / extent.z.max(1e-30));
+    let sx = (nx as f64 - 1.0) / extent.x.max(1e-30);
+    let sy = (ny as f64 - 1.0) / extent.y.max(1e-30);
+    let sz = (nz as f64 - 1.0) / extent.z.max(1e-30);
 
-
-    let ox = ((nx as f64 - 1.0) - extent.x * scale) * 0.5;
-    let oy = ((ny as f64 - 1.0) - extent.y * scale) * 0.5;
-    let oz = ((nz as f64 - 1.0) - extent.z * scale) * 0.5;
-
+    // Match voxelizer's per-axis mapping exactly so the mesh aligns with solid cells.
     let to_grid = |p: nalgebra::Vector3<f64>| -> [f32; 3] {
         [
-            ((p.x - bounds.min.x) * scale + ox) as f32,
-            ((p.y - bounds.min.y) * scale + oy) as f32,
-            ((p.z - bounds.min.z) * scale + oz) as f32,
+            ((p.x - bounds.min.x) * sx) as f32,
+            ((p.y - bounds.min.y) * sy) as f32,
+            ((p.z - bounds.min.z) * sz) as f32,
         ]
     };
 
@@ -251,6 +248,27 @@ pub fn log_velocity_slice(
     Ok(())
 }
 
+/// Compute and log drag coefficient to Rerun timeline.
+/// Flow direction assumed X. Reference values auto-derived from domain state.
+/// Also logs raw drag force components.
+pub fn log_drag(
+    rec: &RecordingStream,
+    domain: &SoaDomain,
+    step: usize,
+) -> Result<(), rerun::RecordingStreamError> {
+    rec.set_time_sequence("step", step as i64);
+
+    let [fx, fy, fz] = drag_force(domain);
+    let u_ref = reference_velocity(domain).max(1e-12);
+    let a_ref = projected_area_yz(domain).max(1) as f64;
+    let cd = drag_coefficient(fx, 1.0, u_ref, a_ref);
+
+    rec.log("aerodynamics/Cd", &rerun::Scalar::new(cd))?;
+    rec.log("aerodynamics/Fx", &rerun::Scalar::new(fx))?;
+    rec.log("aerodynamics/Fy", &rerun::Scalar::new(fy))?;
+    rec.log("aerodynamics/Fz", &rerun::Scalar::new(fz))?;
+    Ok(())
+}
 
 #[inline]
 fn is_fluid(nt: &NodeType) -> bool {

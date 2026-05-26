@@ -3,7 +3,7 @@
 use std::fs::File;
 use std::path::Path;
 
-use nalgebra::Vector3;
+use nalgebra::{Rotation3, Unit, Vector3};
 use stl_io::read_stl;
 
 #[derive(Clone, Debug)]
@@ -83,4 +83,42 @@ pub fn expand_bounds_relative(b: &mut Bounds, fraction: f64) {
     let delta = b.extent() * fraction;
     b.min -= delta;
     b.max += delta;
+}
+
+/// Rotate triangles around their collective center by XYZ extrinsic Euler angles (degrees).
+/// Recalculates and returns new bounds.
+pub fn rotate_tris(tris: &mut Vec<Tri>, deg: [f64; 3]) -> Bounds {
+    let to_rad = std::f64::consts::PI / 180.0;
+    let rx = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::x()), deg[0] * to_rad);
+    let ry = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::y()), deg[1] * to_rad);
+    let rz = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::z()), deg[2] * to_rad);
+    let rot = rz * ry * rx;
+
+    // Rotate around mesh center so position stays stable
+    let center = {
+        let mut mn = Vector3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+        let mut mx = Vector3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+        for t in tris.iter() {
+            for p in [t.a, t.b, t.c] {
+                mn = mn.inf(&p);
+                mx = mx.sup(&p);
+            }
+        }
+        (mn + mx) * 0.5
+    };
+
+    let mut min = Vector3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+    let mut max = Vector3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+
+    for t in tris.iter_mut() {
+        t.a = rot * (t.a - center) + center;
+        t.b = rot * (t.b - center) + center;
+        t.c = rot * (t.c - center) + center;
+        for p in [t.a, t.b, t.c] {
+            min = min.inf(&p);
+            max = max.sup(&p);
+        }
+    }
+
+    Bounds { min, max }
 }

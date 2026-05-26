@@ -1,15 +1,17 @@
 //! LBM time integration orchestrator
 
+use crate::boundary::domain_edge::stream_soa_with_boundaries;
 use crate::boundary::zou_he::apply_zou_he_soa;
 use crate::collision::{collide_soa, omega_from_tau};
+use crate::config::BoundaryConfig;
 use crate::grid::SoaDomain;
 use crate::physics::{apply_force_soa, update_macroscopic_soa};
-use crate::streaming::stream_soa;
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug)]
 pub struct LbmParams {
     pub tau: f64,
     pub body_force: [f64; 3],
+    pub boundary: BoundaryConfig,
 }
 
 impl Default for LbmParams {
@@ -17,6 +19,7 @@ impl Default for LbmParams {
         Self {
             tau: 0.8,
             body_force: [0.0; 3],
+            boundary: BoundaryConfig::default(),
         }
     }
 }
@@ -31,7 +34,7 @@ pub fn step_soa(domain: &mut SoaDomain, p: &LbmParams) {
         apply_force_soa(domain, g[0], g[1], g[2], omega);
     }
 
-    stream_soa(domain);
+    stream_soa_with_boundaries(domain, &p.boundary);
     apply_zou_he_soa(domain);
     update_macroscopic_soa(domain);
 }
