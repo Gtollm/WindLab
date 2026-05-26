@@ -211,7 +211,8 @@ def run(
     seed: int,
 ) -> tuple[np.ndarray, float]:
 
-    tau = 0.5 + 4.5 / re   # keeps u_inlet = 0.05·D/D = 0.05 at any Re
+    u_inlet = 0.1
+    tau = 0.5 + 3.0 * u_inlet * cpd / re
 
     sign = -1.0 if mode == "max" else 1.0   # CMA-ES always minimizes
 
