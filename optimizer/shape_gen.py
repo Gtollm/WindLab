@@ -46,9 +46,15 @@ def params_to_radii(
     x_ctrl = np.linspace(0.0, L, n_pts)
     r_ctrl = np.abs(params)  # ensure non-negative
 
+    r_min = r_ctrl.max() * 0.02  # 2% of peak radius — prevents pinch-off
     cs = CubicSpline(x_ctrl, r_ctrl, bc_type="not-a-knot")
     x_pts = np.linspace(0.0, L, n_x)
-    r_pts = np.clip(cs(x_pts), 0.0, None)
+    r_pts = np.clip(cs(x_pts), r_min, None)
+    # restore true zero at endpoints if the control points requested it
+    if r_ctrl[0] < r_min:
+        r_pts[0] = 0.0
+    if r_ctrl[-1] < r_min:
+        r_pts[-1] = 0.0
     return x_pts, r_pts
 
 
