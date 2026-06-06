@@ -160,4 +160,4 @@ For config-driven Rerun runs with geometry from TOML, use solid wall boundaries 
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT
