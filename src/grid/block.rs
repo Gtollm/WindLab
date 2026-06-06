@@ -1,4 +1,4 @@
-//! Block decomposition for parallel iteration along the Z axis
+//! Block decomposition for parallel iteration along the Z axis.
 
 pub fn z_slab_ranges(nz: usize, num_chunks: usize) -> Vec<(usize, usize)> {
     if num_chunks == 0 || nz == 0 {

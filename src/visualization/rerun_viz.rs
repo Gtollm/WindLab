@@ -1,5 +1,5 @@
 use crate::geometry::stl::Tri;
-use crate::grid::{cell::NodeType, SoaDomain};
+use crate::grid::{NodeType, SoaDomain};
 use crate::physics::{drag_coefficient, drag_force, projected_area_yz, reference_velocity};
 
 pub use rerun::RecordingStream;
@@ -25,7 +25,7 @@ pub fn log_stl_mesh(
     let sy = (ny as f64 - 1.0) / extent.y.max(1e-30);
     let sz = (nz as f64 - 1.0) / extent.z.max(1e-30);
 
-    // Match voxelizer's per-axis mapping exactly so the mesh aligns with solid cells.
+    // same per-axis mapping as the voxelizer so the mesh aligns with solid cells
     let to_grid = |p: nalgebra::Vector3<f64>| -> [f32; 3] {
         [
             ((p.x - bounds.min.x) * sx) as f32,
@@ -55,7 +55,10 @@ pub fn log_stl_mesh(
     Ok(())
 }
 
-pub fn log_geometry(rec: &RecordingStream, domain: &SoaDomain) -> Result<(), rerun::RecordingStreamError> {
+pub fn log_geometry(
+    rec: &RecordingStream,
+    domain: &SoaDomain,
+) -> Result<(), rerun::RecordingStreamError> {
     let (verts, tris) = build_solid_surface(domain);
     if tris.is_empty() {
         return Ok(());
@@ -102,53 +105,65 @@ fn build_solid_surface(domain: &SoaDomain) -> (Vec<[f32; 3]>, Vec<[u32; 3]>) {
                 }
                 let (fx, fy, fz) = (x as f32, y as f32, z as f32);
 
-                // +X
                 if !is_solid(ix + 1, iy, iz) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx+1.0, fy,     fz    ],
-                        [fx+1.0, fy,     fz+1.0],
-                        [fx+1.0, fy+1.0, fz+1.0],
-                        [fx+1.0, fy+1.0, fz    ]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx + 1.0, fy, fz],
+                        [fx + 1.0, fy, fz + 1.0],
+                        [fx + 1.0, fy + 1.0, fz + 1.0],
+                        [fx + 1.0, fy + 1.0, fz],
+                    );
                 }
-                // -X
                 if !is_solid(ix - 1, iy, iz) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx, fy,     fz    ],
-                        [fx, fy+1.0, fz    ],
-                        [fx, fy+1.0, fz+1.0],
-                        [fx, fy,     fz+1.0]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx, fy, fz],
+                        [fx, fy + 1.0, fz],
+                        [fx, fy + 1.0, fz + 1.0],
+                        [fx, fy, fz + 1.0],
+                    );
                 }
-                // +Y
                 if !is_solid(ix, iy + 1, iz) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx,     fy+1.0, fz    ],
-                        [fx+1.0, fy+1.0, fz    ],
-                        [fx+1.0, fy+1.0, fz+1.0],
-                        [fx,     fy+1.0, fz+1.0]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx, fy + 1.0, fz],
+                        [fx + 1.0, fy + 1.0, fz],
+                        [fx + 1.0, fy + 1.0, fz + 1.0],
+                        [fx, fy + 1.0, fz + 1.0],
+                    );
                 }
-                // -Y
                 if !is_solid(ix, iy - 1, iz) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx,     fy, fz    ],
-                        [fx,     fy, fz+1.0],
-                        [fx+1.0, fy, fz+1.0],
-                        [fx+1.0, fy, fz    ]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx, fy, fz],
+                        [fx, fy, fz + 1.0],
+                        [fx + 1.0, fy, fz + 1.0],
+                        [fx + 1.0, fy, fz],
+                    );
                 }
-                // +Z
                 if !is_solid(ix, iy, iz + 1) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx,     fy,     fz+1.0],
-                        [fx+1.0, fy,     fz+1.0],
-                        [fx+1.0, fy+1.0, fz+1.0],
-                        [fx,     fy+1.0, fz+1.0]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx, fy, fz + 1.0],
+                        [fx + 1.0, fy, fz + 1.0],
+                        [fx + 1.0, fy + 1.0, fz + 1.0],
+                        [fx, fy + 1.0, fz + 1.0],
+                    );
                 }
-                // -Z
                 if !is_solid(ix, iy, iz - 1) {
-                    add_quad(&mut verts, &mut tris,
-                        [fx,     fy,     fz    ],
-                        [fx,     fy+1.0, fz    ],
-                        [fx+1.0, fy+1.0, fz    ],
-                        [fx+1.0, fy,     fz    ]);
+                    add_quad(
+                        &mut verts,
+                        &mut tris,
+                        [fx, fy, fz],
+                        [fx, fy + 1.0, fz],
+                        [fx + 1.0, fy + 1.0, fz],
+                        [fx + 1.0, fy, fz],
+                    );
                 }
             }
         }
@@ -160,7 +175,10 @@ fn build_solid_surface(domain: &SoaDomain) -> (Vec<[f32; 3]>, Vec<[u32; 3]>) {
 fn add_quad(
     verts: &mut Vec<[f32; 3]>,
     tris: &mut Vec<[u32; 3]>,
-    v0: [f32; 3], v1: [f32; 3], v2: [f32; 3], v3: [f32; 3],
+    v0: [f32; 3],
+    v1: [f32; 3],
+    v2: [f32; 3],
+    v3: [f32; 3],
 ) {
     let base = verts.len() as u32;
     verts.extend_from_slice(&[v0, v1, v2, v3]);

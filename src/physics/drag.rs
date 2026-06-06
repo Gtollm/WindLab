@@ -1,4 +1,4 @@
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::{C, OPPOSITE, Q};
 
@@ -23,7 +23,9 @@ pub fn drag_force(domain: &SoaDomain) -> [f64; 3] {
                     let ny_ = y as i32 + C[i][1];
                     let nz_ = z as i32 + C[i][2];
 
-                    if nx_ < 0 || ny_ < 0 || nz_ < 0
+                    if nx_ < 0
+                        || ny_ < 0
+                        || nz_ < 0
                         || nx_ >= nx as i32
                         || ny_ >= ny as i32
                         || nz_ >= nz as i32
@@ -33,9 +35,6 @@ pub fn drag_force(domain: &SoaDomain) -> [f64; 3] {
 
                     let nb = domain.idx(nx_ as usize, ny_ as usize, nz_ as usize);
                     if matches!(domain.node_type[nb], NodeType::Solid) {
-                        // Use the bounce-back population (OPPOSITE[i]) which equals
-                        // the pre-streaming f[i] from the previous step.
-                        // After pull streaming: f[OPPOSITE[i]][xf] = old f[i][xf].
                         let fi = domain.f[OPPOSITE[i]][id];
                         fx += 2.0 * fi * C[i][0] as f64;
                         fy += 2.0 * fi * C[i][1] as f64;
@@ -64,7 +63,7 @@ pub fn projected_area_yz(domain: &SoaDomain) -> usize {
             for x in 0..nx {
                 if matches!(domain.node_type[domain.idx(x, y, z)], NodeType::Solid) {
                     count += 1;
-                    break; // one hit per (y,z) column is enough
+                    break;
                 }
             }
         }
@@ -76,18 +75,15 @@ pub fn reference_velocity(domain: &SoaDomain) -> f64 {
     let mut sum = 0.0_f64;
     let mut count = 0usize;
     for j in 0..domain.ncells() {
-        match &domain.node_type[j] {
-            NodeType::Inlet(u) => {
-                sum += (u.x * u.x + u.y * u.y + u.z * u.z).sqrt();
-                count += 1;
-            }
-            _ => {}
+        if let NodeType::Inlet(u) = &domain.node_type[j] {
+            sum += (u.x * u.x + u.y * u.y + u.z * u.z).sqrt();
+            count += 1;
         }
     }
     if count > 0 {
         return sum / count as f64;
     }
-    
+
     let mut sum = 0.0_f64;
     let mut n = 0usize;
     for j in 0..domain.ncells() {
@@ -99,5 +95,9 @@ pub fn reference_velocity(domain: &SoaDomain) -> f64 {
             n += 1;
         }
     }
-    if n > 0 { sum / n as f64 } else { 1.0 }
+    if n > 0 {
+        sum / n as f64
+    } else {
+        1.0
+    }
 }

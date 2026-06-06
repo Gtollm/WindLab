@@ -1,0 +1,37 @@
+# Use with: cargo run --release -- run --config optimizer/viz.toml --rerun
+#
+# Visualize an optimizer-generated STL (axisymmetric body along +x, length ~0.06 m).
+# Edit stl_path to your best shape from runs/...
+
+[grid]
+nx = 64
+ny = 64
+nz = 64
+dx = 1.0e-3
+dt = 1.0e-3
+
+[physics]
+tau = 0.545
+body_force = [0.0, 0.0, 0]
+inlet_u = [0.099, 0.0, 0]
+
+[run]
+steps = 2000
+vtk_every = 50
+
+[io]
+output_dir = "output"
+vtk_basename = "opt_viz"
+
+[geometry]
+stl_path = "../best_min_cd_Re200.stl"
+padding = 0.5
+rotation_deg = [0.0, 0.0, 0.0]
+
+[boundary]
+left   = "open"
+right  = "open"
+front  = "solid"
+back   = "solid"
+bottom = "solid"
+top    = "solid"

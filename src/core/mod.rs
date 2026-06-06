@@ -1,3 +1,3 @@
-//! Core solver for lbm
+//! Core LBM solver.
 
 pub mod solver;

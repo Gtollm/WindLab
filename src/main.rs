@@ -7,9 +7,7 @@ use tracing_subscriber::FmtSubscriber;
 mod commands;
 
 use commands::{
-    demo_channel::run_demo,
-    demo_sphere::run_demo_sphere,
-    eval_stl::run_eval_stl,
+    demo_channel::run_demo, demo_sphere::run_demo_sphere, eval_stl::run_eval_stl,
     run::run_simulation,
 };
 
@@ -40,7 +38,6 @@ enum Commands {
         no_progress: bool,
         #[arg(long)]
         rerun: bool,
-        /// Z-planes to visualize: comma-separated indices and/or ranges (e.g. "1,2,3-8,10").
         #[arg(long)]
         slice_z: Option<String>,
     },
@@ -58,7 +55,6 @@ enum Commands {
         #[arg(long)]
         slice_z: Option<String>,
     },
-    /// Evaluate drag coefficient for an arbitrary STL geometry. Outputs "Cd=<value>" on stdout.
     EvalStl {
         #[arg(long)]
         stl: PathBuf,
@@ -66,15 +62,15 @@ enum Commands {
         re: f64,
         #[arg(long, default_value_t = 0.6)]
         tau: f64,
-        /// Cells per cross-stream diameter
         #[arg(long, default_value_t = 30)]
         cpd: usize,
         #[arg(long, default_value_t = 8000)]
         steps: usize,
         #[arg(long)]
         no_progress: bool,
+        #[arg(long)]
+        quiet: bool,
     },
-    /// Sphere validation benchmark. Runs flow past a sphere and reports Cd vs empirical.
     DemoSphere {
         #[arg(long, default_value_t = 100.0)]
         re: f64,
@@ -94,14 +90,38 @@ enum Commands {
 impl Commands {
     fn run(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         match self {
-            Commands::Run { config, async_io, no_progress, rerun, slice_z } =>
-                run_simulation(&config, async_io, no_progress, rerun, slice_z),
-            Commands::DemoChannel { n, steps, no_progress, rerun, viz_every, slice_z } =>
-                run_demo(n, steps, no_progress, rerun, viz_every, slice_z),
-            Commands::EvalStl { stl, re, tau, cpd, steps, no_progress } =>
-                run_eval_stl(stl, re, tau, cpd, steps, no_progress),
-            Commands::DemoSphere { re, diameter, steps, tau, no_progress, rerun } =>
-                run_demo_sphere(re, diameter, steps, tau, no_progress, rerun),
+            Commands::Run {
+                config,
+                async_io,
+                no_progress,
+                rerun,
+                slice_z,
+            } => run_simulation(&config, async_io, no_progress, rerun, slice_z),
+            Commands::DemoChannel {
+                n,
+                steps,
+                no_progress,
+                rerun,
+                viz_every,
+                slice_z,
+            } => run_demo(n, steps, no_progress, rerun, viz_every, slice_z),
+            Commands::EvalStl {
+                stl,
+                re,
+                tau,
+                cpd,
+                steps,
+                no_progress,
+                quiet,
+            } => run_eval_stl(stl, re, tau, cpd, steps, no_progress, quiet),
+            Commands::DemoSphere {
+                re,
+                diameter,
+                steps,
+                tau,
+                no_progress,
+                rerun,
+            } => run_demo_sphere(re, diameter, steps, tau, no_progress, rerun),
         }
     }
 }

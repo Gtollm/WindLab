@@ -1,10 +1,10 @@
-//! VTK ImageData (`.vti`) export via the `vtkio` crate
+//! VTK ImageData (`.vti`) export via the `vtkio` crate.
 
 use std::path::Path;
 
 use crate::geometry::coords::nm1;
 use crate::geometry::stl::Bounds;
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::CS2;
 

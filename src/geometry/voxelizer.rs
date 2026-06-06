@@ -6,10 +6,8 @@
 //! This correctly fills the interior of any closed, manifold STL mesh
 //! regardless of triangle density or body orientation.
 
-use nalgebra::Vector3;
-
 use super::stl::{Bounds, Tri};
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 
 pub fn voxelize_triangles(
     nx: usize,
@@ -90,8 +88,8 @@ pub fn voxelize_triangles(
 /// `tri`, or `None` if the ray misses the triangle.
 ///
 /// Uses barycentric coordinates in the YZ projection:
-///   P = A + u·(C−A) + v·(B−A)  with  u,v ≥ 0  and  u+v ≤ 1
-/// then interpolates x = A.x + u·(C.x−A.x) + v·(B.x−A.x).
+///   P = A + u*(C-A) + v*(B-A)  with  u,v >= 0  and  u+v <= 1
+/// then interpolates x = A.x + u*(C.x-A.x) + v*(B.x-A.x).
 fn ray_x_tri(y: f64, z: f64, tri: &Tri) -> Option<f64> {
     let a = tri.a;
     let b = tri.b;
@@ -117,21 +115,4 @@ fn ray_x_tri(y: f64, z: f64, tri: &Tri) -> Option<f64> {
     } else {
         None
     }
-}
-
-pub fn world_to_lattice(
-    p: Vector3<f64>,
-    world_min: Vector3<f64>,
-    world_max: Vector3<f64>,
-    nx: usize,
-    ny: usize,
-    nz: usize,
-) -> (usize, usize, usize) {
-    use super::coords::{world_to_node_index_component, world_to_normalized};
-    let n = world_to_normalized(p, world_min, world_max);
-    (
-        world_to_node_index_component(n.x, nx),
-        world_to_node_index_component(n.y, ny),
-        world_to_node_index_component(n.z, nz),
-    )
 }

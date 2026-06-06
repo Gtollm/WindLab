@@ -1,5 +1,5 @@
 use wind_lab::core::solver::{step_soa, LbmParams};
-use wind_lab::grid::cell::NodeType;
+use wind_lab::grid::NodeType;
 use wind_lab::grid::SoaDomain;
 use wind_lab::io::write_vti_velocity;
 use wind_lab::lattice::index;
@@ -49,7 +49,9 @@ pub fn run_demo(
     let pb = progress_bar(steps, no_progress);
     for step in 0..steps {
         step_soa(&mut domain, &params);
-        if let Some(p) = &pb { p.inc(1); }
+        if let Some(p) = &pb {
+            p.inc(1);
+        }
         if let Some(r) = &rec {
             if (step + 1) % every == 0 {
                 rerun_viz::log_velocity_points(r, &domain, step + 1)?;
@@ -58,7 +60,9 @@ pub fn run_demo(
             }
         }
     }
-    if let Some(p) = &pb { p.finish_with_message("demo finished"); }
+    if let Some(p) = &pb {
+        p.finish_with_message("demo finished");
+    }
 
     std::fs::create_dir_all("output")?;
     write_vti_velocity("output/demo_channel.vti", &domain, None)?;

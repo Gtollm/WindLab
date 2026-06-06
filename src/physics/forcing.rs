@@ -1,21 +1,25 @@
-//! Body force - uniform body force density added after collision.
+//! Body force added after collision.
 
-use crate::grid::cell::NodeType;
+use rayon::prelude::*;
+
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::{C, CS2, Q, W};
 
 pub fn apply_force_soa(domain: &mut SoaDomain, gx: f64, gy: f64, gz: f64, omega: f64) {
     let pref = 1.0 - 0.5 * omega;
     let n = domain.ncells();
+    let addr = domain as *mut SoaDomain as usize;
 
-    for j in 0..n {
-        if matches!(domain.node_type[j], NodeType::Solid) {
-            continue;
+    (0..n).into_par_iter().for_each(move |j| {
+        let d = unsafe { &mut *(addr as *mut SoaDomain) };
+        if matches!(d.node_type[j], NodeType::Solid) {
+            return;
         }
 
-        let ux = domain.ux[j];
-        let uy = domain.uy[j];
-        let uz = domain.uz[j];
+        let ux = d.ux[j];
+        let uy = d.uy[j];
+        let uz = d.uz[j];
         let u_dot_g = ux * gx + uy * gy + uz * gz;
 
         for i in 0..Q {
@@ -25,7 +29,7 @@ pub fn apply_force_soa(domain: &mut SoaDomain, gx: f64, gy: f64, gz: f64, omega:
             let eu = ex * ux + ey * uy + ez * uz;
             let eg = ex * gx + ey * gy + ez * gz;
             let fi = W[i] * (3.0 * eg + 9.0 * eu * eg / CS2 - 3.0 * u_dot_g);
-            domain.f[i][j] += pref * fi;
+            d.f[i][j] += pref * fi;
         }
-    }
+    });
 }

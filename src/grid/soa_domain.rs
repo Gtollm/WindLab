@@ -1,9 +1,9 @@
-//! Structure-of-Arrays domain
+//! Structure-of-Arrays domain.
 
 use nalgebra::Vector3;
 
-use super::cell::NodeType;
 use super::in_bounds;
+use super::NodeType;
 use crate::lattice::{equilibrium::feq_populations, index, Q};
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,4 @@
-//! Macroscopic moments, body forcing, and aerodynamic coefficients
+//! Macroscopic moments, body forcing, and aerodynamic coefficients.
 
 pub mod drag;
 pub mod forcing;

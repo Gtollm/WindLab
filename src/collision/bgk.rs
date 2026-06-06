@@ -1,20 +1,15 @@
-//! Bhatnagar–Gross–Krook (BGK) collision operator
+//! Bhatnagar-Gross-Krook (BGK) collision operator
 
 use rayon::prelude::*;
 
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
-use crate::grid::cell::NodeType;
-use crate::lattice::Q;
 use crate::lattice::equilibrium::feq_populations;
+use crate::lattice::Q;
 
 #[inline]
 pub fn omega_from_tau(tau: f64) -> f64 {
     1.0 / tau
-}
-
-#[inline]
-pub fn nu_from_tau(tau: f64) -> f64 {
-    crate::lattice::CS2 * (tau - 0.5)
 }
 
 pub fn collide_soa(domain: &mut SoaDomain, omega: f64) {

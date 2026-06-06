@@ -1,33 +1,10 @@
-//! Coordinate transforms between world, normalised, and lattice index spaces
+//! Coordinate transforms between world, normalized, and lattice index spaces.
 
 use nalgebra::Vector3;
 
 #[inline]
 pub fn nm1(n: usize) -> f64 {
     n.saturating_sub(1).max(1) as f64
-}
-
-#[inline]
-pub fn norm_span_to_index_range(t_lo: f64, t_hi: f64, n: usize) -> (usize, usize) {
-    let span = nm1(n);
-    let (lo, hi) = if t_lo <= t_hi {
-        (t_lo.clamp(0.0, 1.0), t_hi.clamp(0.0, 1.0))
-    } else {
-        (t_hi.clamp(0.0, 1.0), t_lo.clamp(0.0, 1.0))
-    };
-
-    let mut i0 = (lo * span).floor() as isize;
-    let mut i1 = (hi * span).ceil() as isize;
-    let imax = n.saturating_sub(1) as isize;
-
-    i0 = i0.clamp(0, imax);
-    i1 = i1.clamp(0, imax);
-
-    if i1 < i0 {
-        (i0 as usize, i0 as usize)
-    } else {
-        (i0 as usize, i1 as usize)
-    }
 }
 
 #[inline]

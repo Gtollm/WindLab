@@ -1,4 +1,4 @@
-//! STL triangle mesh loading
+//! STL triangle mesh loading.
 
 use std::fs::File;
 use std::path::Path;
@@ -85,16 +85,13 @@ pub fn expand_bounds_relative(b: &mut Bounds, fraction: f64) {
     b.max += delta;
 }
 
-/// Rotate triangles around their collective center by XYZ extrinsic Euler angles (degrees).
-/// Recalculates and returns new bounds.
-pub fn rotate_tris(tris: &mut Vec<Tri>, deg: [f64; 3]) -> Bounds {
+pub fn rotate_tris(tris: &mut [Tri], deg: [f64; 3]) -> Bounds {
     let to_rad = std::f64::consts::PI / 180.0;
     let rx = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::x()), deg[0] * to_rad);
     let ry = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::y()), deg[1] * to_rad);
     let rz = Rotation3::from_axis_angle(&Unit::new_normalize(Vector3::z()), deg[2] * to_rad);
     let rot = rz * ry * rx;
 
-    // Rotate around mesh center so position stays stable
     let center = {
         let mut mn = Vector3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
         let mut mx = Vector3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);

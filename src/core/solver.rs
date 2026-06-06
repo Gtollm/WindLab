@@ -1,4 +1,4 @@
-//! LBM time integration orchestrator
+//! LBM time integration orchestrator.
 
 use crate::boundary::domain_edge::stream_soa_with_boundaries;
 use crate::boundary::zou_he::apply_zou_he_soa;
@@ -43,11 +43,6 @@ pub fn run_soa(domain: &mut SoaDomain, p: &LbmParams, n_steps: usize) {
     for _ in 0..n_steps {
         step_soa(domain, p);
     }
-}
-
-#[inline]
-pub fn nu_lattice(tau: f64) -> f64 {
-    crate::collision::nu_from_tau(tau)
 }
 
 #[inline]

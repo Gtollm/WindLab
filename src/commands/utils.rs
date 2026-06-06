@@ -39,8 +39,14 @@ pub fn parse_z_indices(
             continue;
         }
         if let Some((a, b)) = token.split_once('-') {
-            let lo: usize = a.trim().parse().map_err(|_| format!("invalid index \"{a}\""))?;
-            let hi: usize = b.trim().parse().map_err(|_| format!("invalid index \"{b}\""))?;
+            let lo: usize = a
+                .trim()
+                .parse()
+                .map_err(|_| format!("invalid index \"{a}\""))?;
+            let hi: usize = b
+                .trim()
+                .parse()
+                .map_err(|_| format!("invalid index \"{b}\""))?;
             if lo > hi {
                 return Err(format!("range \"{token}\": start > end").into());
             }
@@ -48,7 +54,9 @@ pub fn parse_z_indices(
                 set.insert(z.min(nz - 1));
             }
         } else {
-            let z: usize = token.parse().map_err(|_| format!("invalid index \"{token}\""))?;
+            let z: usize = token
+                .parse()
+                .map_err(|_| format!("invalid index \"{token}\""))?;
             set.insert(z.min(nz - 1));
         }
     }

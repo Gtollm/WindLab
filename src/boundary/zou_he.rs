@@ -1,7 +1,7 @@
-//! Simplified Zou–He style velocity / pressure boundaries
+//! Simplified Zou-He style velocity / pressure boundaries
 use nalgebra::Vector3;
 
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::equilibrium::feq_populations;
 use crate::lattice::{index, unravel_index, Q};

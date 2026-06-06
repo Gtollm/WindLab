@@ -1,7 +1,9 @@
 //! Domain outer-face rules for pull streaming (solid / open / periodic).
 
+use rayon::prelude::*;
+
 use crate::config::{BoundaryConfig, BoundaryKind};
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::{index, C, OPPOSITE, Q};
 
@@ -9,12 +11,7 @@ use super::periodic::wrap;
 
 #[inline]
 fn in_domain(gx: i32, gy: i32, gz: i32, nx: usize, ny: usize, nz: usize) -> bool {
-    gx >= 0
-        && gy >= 0
-        && gz >= 0
-        && (gx as usize) < nx
-        && (gy as usize) < ny
-        && (gz as usize) < nz
+    gx >= 0 && gy >= 0 && gz >= 0 && (gx as usize) < nx && (gy as usize) < ny && (gz as usize) < nz
 }
 
 fn apply_periodic(
@@ -115,7 +112,7 @@ pub fn stream_soa_with_boundaries(domain: &mut SoaDomain, bounds: &BoundaryConfi
     let n = domain.ncells();
     let addr = domain as *mut SoaDomain as usize;
 
-    (0..n).into_iter().for_each(move |id| {
+    (0..n).into_par_iter().for_each(move |id| {
         let d = unsafe { &mut *(addr as *mut SoaDomain) };
         if matches!(d.node_type[id], NodeType::Solid) {
             return;

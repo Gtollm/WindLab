@@ -1,6 +1,6 @@
 use wind_lab::boundary::zou_he::{tag_x0_inlet, tag_xmax_outlet};
 use wind_lab::core::solver::{step_soa, LbmParams};
-use wind_lab::grid::cell::NodeType;
+use wind_lab::grid::NodeType;
 use wind_lab::grid::SoaDomain;
 use wind_lab::lattice::index;
 use wind_lab::visualization::rerun_viz;
@@ -19,9 +19,7 @@ pub fn run_demo_sphere(
     let u_inlet = re * nu / diameter as f64;
 
     if u_inlet > 0.1 {
-        eprintln!(
-            "Warning: u_inlet={u_inlet:.4} > 0.1 (Ma limit). Increase diameter or lower Re."
-        );
+        eprintln!("Warning: u_inlet={u_inlet:.4} > 0.1 (Ma limit). Increase diameter or lower Re.");
     }
 
     let d = diameter;
@@ -74,14 +72,18 @@ pub fn run_demo_sphere(
     let pb = progress_bar(steps, no_progress);
     for step in 0..steps {
         step_soa(&mut domain, &params);
-        if let Some(p) = &pb { p.inc(1); }
+        if let Some(p) = &pb {
+            p.inc(1);
+        }
         if let Some(r) = &rec {
             if (step + 1) % every == 0 {
                 rerun_viz::log_drag(r, &domain, step + 1)?;
             }
         }
     }
-    if let Some(p) = &pb { p.finish_with_message("sphere done"); }
+    if let Some(p) = &pb {
+        p.finish_with_message("sphere done");
+    }
 
     let [fx, _, _] = wind_lab::physics::drag_force(&domain);
     let a_ref = wind_lab::physics::projected_area_yz(&domain).max(1) as f64;
@@ -90,21 +92,33 @@ pub fn run_demo_sphere(
 
     let stokes_fx = 3.0 * std::f64::consts::PI * nu * d as f64 * u_inlet;
     let front_id = domain.idx((cx - 1) as usize, cy as usize, cz as usize);
-    let back_id  = domain.idx((cx + 1) as usize, cy as usize, cz as usize);
+    let back_id = domain.idx((cx + 1) as usize, cy as usize, cz as usize);
     let rho_front = domain.rho[front_id];
-    let rho_back  = domain.rho[back_id];
+    let rho_back = domain.rho[back_id];
 
     println!("\n=== Sphere validation (Re={re:.1}) ===");
     println!("  tau        = {tau:.3}");
     println!("  u_inlet    = {u_inlet:.5}  (lattice units)");
     println!("  diameter   = {d} cells");
     println!("  grid       = {nx}x{ny}x{nz}");
-    println!("  Fx (LBM)   = {fx:.6}  Fx (Stokes) = {stokes_fx:.6}  ratio = {:.3}", fx / stokes_fx);
-    println!("  rho_front  = {rho_front:.6}  rho_back = {rho_back:.6}  Δρ = {:.6}", rho_front - rho_back);
-    println!("  a_ref      = {a_ref:.1}  (expected ≈ {:.1})", std::f64::consts::PI * (d as f64 / 2.0).powi(2));
+    println!(
+        "  Fx (LBM)   = {fx:.6}  Fx (Stokes) = {stokes_fx:.6}  ratio = {:.3}",
+        fx / stokes_fx
+    );
+    println!(
+        "  rho_front  = {rho_front:.6}  rho_back = {rho_back:.6}  d_rho = {:.6}",
+        rho_front - rho_back
+    );
+    println!(
+        "  a_ref      = {a_ref:.1}  (expected ~ {:.1})",
+        std::f64::consts::PI * (d as f64 / 2.0).powi(2)
+    );
     println!("  Cd (LBM)   = {cd_sim:.4}");
     println!("  Cd (ref)   = {cd_ref:.4}  [Oseen/empirical]");
-    println!("  error      = {:.1}%", (cd_sim - cd_ref).abs() / cd_ref * 100.0);
+    println!(
+        "  error      = {:.1}%",
+        (cd_sim - cd_ref).abs() / cd_ref * 100.0
+    );
 
     Ok(())
 }

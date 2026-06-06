@@ -7,7 +7,7 @@ use wind_lab::config::SimConfig;
 use wind_lab::core::solver::{step_soa, LbmParams};
 use wind_lab::geometry::stl::{expand_bounds_relative, pad_bounds, Bounds};
 use wind_lab::geometry::{load_stl_triangles, rotate_tris, voxelize_triangles};
-use wind_lab::grid::cell::NodeType;
+use wind_lab::grid::NodeType;
 use wind_lab::grid::SoaDomain;
 use wind_lab::io::{write_vti_velocity, write_vtp_stl_surface};
 use wind_lab::visualization::rerun_viz::{self, RecordingStream};
@@ -48,7 +48,14 @@ pub fn run_simulation(
         let r = rerun_viz::spawn_viewer("windlab")?;
         if !stl_tris.is_empty() {
             if let Some(bounds) = &world_frame {
-                rerun_viz::log_stl_mesh(&r, &stl_tris, bounds, cfg.grid.nx, cfg.grid.ny, cfg.grid.nz)?;
+                rerun_viz::log_stl_mesh(
+                    &r,
+                    &stl_tris,
+                    bounds,
+                    cfg.grid.nx,
+                    cfg.grid.ny,
+                    cfg.grid.nz,
+                )?;
             }
         } else {
             rerun_viz::log_geometry(&r, &domain)?;
@@ -60,9 +67,25 @@ pub fn run_simulation(
 
     let z_indices = parse_z_indices(slice_z_spec.as_deref(), cfg.grid.nz)?;
     if async_io {
-        run_async(&cfg, &params, &domain, world_frame, no_progress, rec, z_indices)?;
+        run_async(
+            &cfg,
+            &params,
+            &domain,
+            world_frame,
+            no_progress,
+            rec,
+            z_indices,
+        )?;
     } else {
-        run_sync(&cfg, &params, &domain, world_frame, no_progress, rec, z_indices)?;
+        run_sync(
+            &cfg,
+            &params,
+            &domain,
+            world_frame,
+            no_progress,
+            rec,
+            z_indices,
+        )?;
     }
 
     info!("Run finished.");
@@ -72,12 +95,16 @@ pub fn run_simulation(
 fn load_and_voxelize(
     cfg: &SimConfig,
     types: &mut [NodeType],
-) -> Result<(Option<Bounds>, Vec<wind_lab::geometry::stl::Tri>), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<
+    (Option<Bounds>, Vec<wind_lab::geometry::stl::Tri>),
+    Box<dyn std::error::Error + Send + Sync>,
+> {
     let Some(geo) = &cfg.geometry else {
         return Ok((None, vec![]));
     };
 
-    let (mut tris, mut bounds) = load_stl_triangles(&geo.stl_path).map_err(std::io::Error::other)?;
+    let (mut tris, mut bounds) =
+        load_stl_triangles(&geo.stl_path).map_err(std::io::Error::other)?;
 
     let rot = geo.rotation_deg;
     if rot[0].abs() + rot[1].abs() + rot[2].abs() > f64::EPSILON {
@@ -116,7 +143,9 @@ fn run_sync(
 
     for step in 0..cfg.run.steps {
         step_soa(&mut domain, params);
-        if let Some(p) = &pb { p.inc(1); }
+        if let Some(p) = &pb {
+            p.inc(1);
+        }
         if cfg.run.vtk_every > 0 && (step + 1) % cfg.run.vtk_every == 0 {
             let path = vtk_path(&cfg.io.output_dir, &cfg.io.vtk_basename, step + 1);
             write_vti_velocity(&path, &domain, world_frame.as_ref())?;
@@ -128,7 +157,9 @@ fn run_sync(
         }
     }
 
-    if let Some(p) = &pb { p.finish_with_message("run finished"); }
+    if let Some(p) = &pb {
+        p.finish_with_message("run finished");
+    }
     Ok(())
 }
 
@@ -154,18 +185,20 @@ fn run_async(
 
         for step in 0..steps {
             step_soa(&mut domain, params);
-            if let Some(p) = &pb { p.inc(1); }
+            if let Some(p) = &pb {
+                p.inc(1);
+            }
 
             if every > 0 && (step + 1) % every == 0 {
                 if let Some(h) = write_handle.take() {
                     h.await.ok();
                 }
 
-                let snap     = domain.clone();
-                let path     = vtk_path(&out_dir, &base, step + 1);
-                let frame    = world_frame;
+                let snap = domain.clone();
+                let path = vtk_path(&out_dir, &base, step + 1);
+                let frame = world_frame;
                 let rec_snap = rec.clone();
-                let z_snap   = z_indices.clone();
+                let z_snap = z_indices.clone();
 
                 write_handle = Some(tokio::task::spawn_blocking(move || {
                     let _ = write_vti_velocity(&path, &snap, frame.as_ref());
@@ -178,8 +211,12 @@ fn run_async(
             }
         }
 
-        if let Some(h) = write_handle { h.await.ok(); }
-        if let Some(p) = &pb { p.finish_with_message("run finished"); }
+        if let Some(h) = write_handle {
+            h.await.ok();
+        }
+        if let Some(p) = &pb {
+            p.finish_with_message("run finished");
+        }
     });
 
     Ok(())

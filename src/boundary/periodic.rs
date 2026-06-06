@@ -1,4 +1,4 @@
-//! Periodic boundary helpers for lattice indices
+//! Periodic boundary helpers for lattice indices.
 
 #[inline]
 pub fn wrap(i: i32, n: usize) -> usize {
@@ -10,6 +10,7 @@ pub fn wrap(i: i32, n: usize) -> usize {
     r as usize
 }
 
+#[cfg(test)]
 fn neighbor_axis(s: i32, n: usize, periodic: bool) -> Option<usize> {
     if periodic {
         Some(wrap(s, n))
@@ -20,7 +21,8 @@ fn neighbor_axis(s: i32, n: usize, periodic: bool) -> Option<usize> {
     }
 }
 
-pub struct NeighborQuery {
+#[cfg(test)]
+struct NeighborQuery {
     pub sx: i32,
     pub sy: i32,
     pub sz: i32,
@@ -33,7 +35,8 @@ pub struct NeighborQuery {
 }
 
 #[inline]
-pub fn periodic_neighbor(q: NeighborQuery) -> Option<(usize, usize, usize)> {
+#[cfg(test)]
+fn periodic_neighbor(q: NeighborQuery) -> Option<(usize, usize, usize)> {
     let gx = neighbor_axis(q.sx, q.nx, q.px)?;
     let gy = neighbor_axis(q.sy, q.ny, q.py)?;
     let gz = neighbor_axis(q.sz, q.nz, q.pz)?;
@@ -75,19 +78,17 @@ mod tests {
 
     #[test]
     fn periodic_neighbor_out_of_bounds() {
-        assert!(
-            periodic_neighbor(NeighborQuery {
-                sx: -1,
-                sy: 5,
-                sz: 3,
-                nx: 4,
-                ny: 4,
-                nz: 4,
-                px: false,
-                py: true,
-                pz: true,
-            })
-            .is_none()
-        );
+        assert!(periodic_neighbor(NeighborQuery {
+            sx: -1,
+            sy: 5,
+            sz: 3,
+            nx: 4,
+            ny: 4,
+            nz: 4,
+            px: false,
+            py: true,
+            pz: true,
+        })
+        .is_none());
     }
 }

@@ -1,5 +1,7 @@
 /target
-Cargo.lock
-/models
-output
-/.*/
+/output
+/runs
+__pycache__/
+*.pyc
+.DS_Store
+.idea/

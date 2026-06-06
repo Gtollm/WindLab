@@ -1,19 +1,23 @@
-//! Macroscopic moment recovery - density and velocity from populations
+//! Macroscopic moment recovery: density and velocity from populations.
 
-use crate::grid::cell::NodeType;
+use rayon::prelude::*;
+
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 use crate::lattice::{C, Q};
 
 pub fn update_macroscopic_soa(domain: &mut SoaDomain) {
     let n = domain.ncells();
+    let addr = domain as *mut SoaDomain as usize;
 
-    for j in 0..n {
-        if matches!(domain.node_type[j], NodeType::Solid) {
-            domain.rho[j] = 1.0;
-            domain.ux[j] = 0.0;
-            domain.uy[j] = 0.0;
-            domain.uz[j] = 0.0;
-            continue;
+    (0..n).into_par_iter().for_each(move |j| {
+        let d = unsafe { &mut *(addr as *mut SoaDomain) };
+        if matches!(d.node_type[j], NodeType::Solid) {
+            d.rho[j] = 1.0;
+            d.ux[j] = 0.0;
+            d.uy[j] = 0.0;
+            d.uz[j] = 0.0;
+            return;
         }
 
         let mut rho = 0.0_f64;
@@ -22,7 +26,7 @@ pub fn update_macroscopic_soa(domain: &mut SoaDomain) {
         let mut mz = 0.0_f64;
 
         for (i, c) in C.iter().enumerate().take(Q) {
-            let fi = domain.f[i][j];
+            let fi = d.f[i][j];
             rho += fi;
             mx += c[0] as f64 * fi;
             my += c[1] as f64 * fi;
@@ -30,9 +34,9 @@ pub fn update_macroscopic_soa(domain: &mut SoaDomain) {
         }
 
         let inv = 1.0 / rho.max(1e-12);
-        domain.rho[j] = rho;
-        domain.ux[j] = mx * inv;
-        domain.uy[j] = my * inv;
-        domain.uz[j] = mz * inv;
-    }
+        d.rho[j] = rho;
+        d.ux[j] = mx * inv;
+        d.uy[j] = my * inv;
+        d.uz[j] = mz * inv;
+    });
 }

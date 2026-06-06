@@ -1,4 +1,4 @@
-//! VTK PolyData (`.vtp`) export of STL triangle surfaces
+//! VTK PolyData (`.vtp`) export of STL triangle surfaces.
 
 use std::path::Path;
 

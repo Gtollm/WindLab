@@ -1,10 +1,10 @@
-//! TOML configuration for simulations
+//! TOML configuration for simulations.
 
 use serde::Deserialize;
 use std::path::Path;
 
 use crate::core::solver::LbmParams;
-use crate::grid::cell::NodeType;
+use crate::grid::NodeType;
 use crate::grid::SoaDomain;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
@@ -168,7 +168,11 @@ mod tests {
     use super::*;
 
     fn physics(tau: f64, body_force: [f64; 3]) -> PhysicsConfig {
-        PhysicsConfig { tau, body_force }
+        PhysicsConfig {
+            tau,
+            body_force,
+            inlet_u: [0.0; 3],
+        }
     }
 
     #[test]
