@@ -171,6 +171,7 @@ def run(
     n_ctrl: int,
     max_iter: int,
     seed: int,
+    init_shape: str = "sine",
 ) -> tuple[np.ndarray, float]:
 
     u_inlet = 0.099
@@ -178,7 +179,8 @@ def run(
 
     sign = -1.0 if mode == "max" else 1.0  # CMA-ES minimizes; flip sign to maximize Cd
 
-    x0 = sg.default_params(n_ctrl=n_ctrl, V_target=V_target, L=L)
+    L = sg.shape_L(init_shape, V_target=V_target, L=L)
+    x0 = sg.make_init_params(shape=init_shape, n_ctrl=n_ctrl, V_target=V_target, L=L)
     lb, ub = sg.param_bounds(n_ctrl=n_ctrl, V_target=V_target, L=L)
     sigma0 = float((ub[0] - lb[0]) * 0.25)
 
@@ -205,7 +207,7 @@ def run(
     print(f"\n{sep}")
     print(f"  {'MINIMIZE' if mode == 'min' else 'MAXIMIZE'} Cd")
     print(f"  Re={re}  tau={tau:.3f}  V={V_target:.2e} m^3  L={L:.3f} m")
-    print(f"  params={len(x0)}  pop={pop_size}  cpd={cpd}  steps/eval={steps}")
+    print(f"  init={init_shape}  params={len(x0)}  pop={pop_size}  cpd={cpd}  steps/eval={steps}")
     print(f"  run dir -> {run_dir}")
     print(sep)
 
@@ -270,6 +272,12 @@ def main():
     parser.add_argument("--max-iter", type=int, default=60,
                         help="CMA-ES max iterations (default: 60)")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--init-shape",
+        choices=list(sg.INIT_SHAPES),
+        default="football",
+        help="Starting shape for CMA-ES (default: football). Options: football sphere",
+    )
     parser.add_argument("--out-stl", type=str, default=None,
                         help="Save best shape to this STL path")
     args = parser.parse_args()
@@ -289,6 +297,7 @@ def main():
         n_ctrl=args.n_ctrl,
         max_iter=args.max_iter,
         seed=args.seed,
+        init_shape=args.init_shape,
     )
 
     out_path = args.out_stl or f"best_{args.mode}_cd_Re{args.re:.0f}.stl"
